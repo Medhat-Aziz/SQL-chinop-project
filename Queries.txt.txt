@@ -1,0 +1,84 @@
+/* Query 1 */
+SELECT 
+    c.Country AS BillingCountry,
+    COUNT(i.InvoiceId) AS TotalInvoices,
+    SUM(i.Total) AS TotalRevenue
+FROM 
+    Customer c
+JOIN 
+    Invoice i ON c.CustomerId = i.CustomerId
+GROUP BY 
+    c.Country
+ORDER BY 
+    TotalRevenue DESC;
+
+
+/* Query 2 */
+SELECT ar.Name AS Artist,
+       SUM(il.Quantity * il.UnitPrice) AS AmountSpent,
+       c.CustomerId,
+       c.FirstName,
+       c.LastName
+FROM Customer c
+JOIN Invoice i ON c.CustomerId = i.CustomerId
+JOIN InvoiceLine il ON i.InvoiceId = il.InvoiceId
+JOIN Track tr ON il.TrackId = tr.TrackId
+JOIN Album al ON tr.AlbumId = al.AlbumId
+JOIN Artist ar ON al.ArtistId = ar.ArtistId
+WHERE ar.Name = 'Iron Maiden'
+GROUP BY c.CustomerId,
+         ar.Name
+ORDER BY AmountSpent DESC
+LIMIT 5;
+
+/* Query 3 */ WITH GenreSalesByCountry AS
+  (SELECT c.Country,
+          g.Name AS Genre,
+          COUNT(il.InvoiceLineId) AS PurchaseCount
+   FROM Customer c
+   JOIN Invoice i ON c.CustomerId = i.CustomerId
+   JOIN InvoiceLine il ON i.InvoiceId = il.InvoiceId
+   JOIN Track t ON il.TrackId = t.TrackId
+   JOIN Genre g ON t.GenreId = g.GenreId
+   GROUP BY c.Country,
+            g.GenreId),
+                   MaxGenreByCountry AS
+  (SELECT Country,
+          MAX(PurchaseCount) AS MaxPurchases
+   FROM GenreSalesByCountry
+   GROUP BY Country)
+SELECT gs.Country,
+       gs.Genre,
+       gs.PurchaseCount AS MaxPurchases
+FROM GenreSalesByCountry gs
+JOIN MaxGenreByCountry mg ON gs.Country = mg.Country
+AND gs.PurchaseCount = mg.MaxPurchases
+ORDER BY gs.Country,
+         gs.Genre;
+
+/* Query 4 */ WITH CustomerSpending AS
+  (SELECT c.Country,
+          c.CustomerId,
+          c.FirstName,
+          c.LastName,
+          SUM(i.Total) AS TotalSpent
+   FROM Customer c
+   JOIN Invoice i ON c.CustomerId = i.CustomerId
+   GROUP BY c.Country,
+            c.CustomerId),
+                   MaxSpendingByCountry AS
+  (SELECT Country,
+          MAX(TotalSpent) AS MaxSpent
+   FROM CustomerSpending
+   GROUP BY Country)
+SELECT cs.Country,
+       cs.TotalSpent AS MaxSpent,
+       cs.FirstName,
+       cs.LastName,
+       cs.CustomerId
+FROM CustomerSpending cs
+JOIN MaxSpendingByCountry ms ON cs.Country = ms.Country
+AND cs.TotalSpent = ms.MaxSpent
+ORDER BY cs.Country,
+         cs.LastName,
+         cs.FirstName;
